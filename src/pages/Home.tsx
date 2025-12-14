@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Star } from 'lucide-react';
+import { ArrowRight, Star, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from 'sonner';
 import heroBg from '@/assets/hero-bg.jpg';
-import infinityImg from '@/assets/infinity.png';
-import gymImg from '@/assets/gym.png';
-import diningImg from '@/assets/dining.png';
-import entertainmentImg from '@/assets/entertainment.png';
+import infinityImg from '@/assets/infinity-pool.png';
+import gymImg from '@/assets/fitness-center.png';
+import diningImg from '@/assets/gourmet-dining.png';
+import entertainmentImg from '@/assets/evening-entertainment.png';
 import soloRoomImg from '@/assets/solo-room.png';
 import deluxeRoomImg from '@/assets/deluxe-room.png';
 import twinRoomImg from '@/assets/twin-room.png';
@@ -66,16 +67,40 @@ const services = [
   { id: 'airport', image: airportImg, title: 'Airport Transfer', description: 'Convenient transportation to and from airport' },
 ];
 
-const testimonials = [
-  { name: 'Nasus vs Godzilla', rating: 5, text: 'An absolute paradise! Every detail was perfect.' },
-  { name: 'Sarah Mitchell', rating: 5, text: 'Exceptional service and breathtaking views!' },
-  { name: 'James Anderson', rating: 5, text: 'Truly a luxurious escape from the everyday world.' },
-];
+interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  text: string;
+  createdAt: string;
+}
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, text: '' });
+  const [hoverRating, setHoverRating] = useState(0);
+
+  useEffect(() => {
+    const storedReviews = JSON.parse(localStorage.getItem('elysium_reviews') || '[]');
+    setReviews(storedReviews);
+  }, []);
+
+  const totalReviews = 3247 + reviews.length;
+  const averageRating = reviews.length > 0 
+    ? ((4.9 * 3247 + reviews.reduce((sum, r) => sum + r.rating, 0)) / totalReviews).toFixed(1)
+    : '4.9';
+
+  const displayedReviews = reviews.length > 0 
+    ? reviews.slice(-3).reverse()
+    : [
+        { id: '1', name: 'Nasus vs Godzilla', rating: 5, text: 'An absolute paradise! Every detail was perfect.', createdAt: '' },
+        { id: '2', name: 'Sarah Mitchell', rating: 5, text: 'Exceptional service and breathtaking views!', createdAt: '' },
+        { id: '3', name: 'James Anderson', rating: 5, text: 'Truly a luxurious escape from the everyday world.', createdAt: '' },
+      ];
 
   const handleDiscoverClick = () => {
     if (isAuthenticated) {
@@ -83,6 +108,35 @@ export default function Home() {
     } else {
       navigate('/login');
     }
+  };
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Please login to submit a review');
+      navigate('/login');
+      return;
+    }
+    if (!reviewForm.text.trim()) {
+      toast.error('Please write a review');
+      return;
+    }
+
+    const newReview: Review = {
+      id: Date.now().toString(),
+      name: user?.fullName || 'Guest',
+      rating: reviewForm.rating,
+      text: reviewForm.text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReviews = [...reviews, newReview];
+    setReviews(updatedReviews);
+    localStorage.setItem('elysium_reviews', JSON.stringify(updatedReviews));
+    
+    setReviewForm({ rating: 5, text: '' });
+    setShowReviewModal(false);
+    toast.success('Thank you for your review!');
   };
 
   return (
@@ -260,22 +314,22 @@ export default function Home() {
           <div className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl mb-6">{t('testimonials.title')}</h2>
             <div className="flex items-center justify-center gap-4">
-              <span className="font-display text-5xl text-accent">4.9</span>
+              <span className="font-display text-5xl text-accent">{averageRating}</span>
               <div>
                 <div className="flex gap-1 text-accent">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-5 h-5 fill-current" />
                   ))}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Based on 3,247 reviews</p>
+                <p className="text-sm text-muted-foreground mt-1">Based on {totalReviews.toLocaleString()} reviews</p>
               </div>
             </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
+            {displayedReviews.map((testimonial, index) => (
               <div
-                key={index}
+                key={testimonial.id}
                 className="bg-card p-8 rounded-lg shadow-sm animate-fade-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -293,6 +347,73 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Floating Review Button */}
+      <button
+        onClick={() => setShowReviewModal(true)}
+        className="fixed bottom-8 right-8 p-4 bg-accent text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-all duration-300 hover:scale-110 z-50"
+        aria-label="Submit Review"
+      >
+        <MessageCircle className="w-6 h-6" />
+      </button>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-foreground/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl shadow-elegant max-w-md w-full p-8 animate-fade-up">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display text-2xl">Share Your Experience</h3>
+              <button onClick={() => setShowReviewModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReview} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-3">Your Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                      className="transition-transform hover:scale-125"
+                    >
+                      <Star
+                        className={`w-8 h-8 transition-colors ${
+                          star <= (hoverRating || reviewForm.rating)
+                            ? 'text-accent fill-accent'
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Your Review</label>
+                <textarea
+                  value={reviewForm.text}
+                  onChange={(e) => setReviewForm({ ...reviewForm, text: e.target.value })}
+                  placeholder="Tell us about your stay..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Submit Review
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
