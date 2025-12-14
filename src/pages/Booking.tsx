@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar, CreditCard, Wallet, Loader2, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +9,11 @@ import deluxeRoomImg from '@/assets/deluxe-room.png';
 import twinRoomImg from '@/assets/twin-room.png';
 import penthouseImg from '@/assets/penthouse.png';
 
-const rooms = [
-  { id: 'solo', name: 'Solo Room', price: 150, image: soloRoomImg },
-  { id: 'deluxe', name: 'Deluxe Room', price: 280, image: deluxeRoomImg },
-  { id: 'twin', name: 'Twin Deluxe Room', price: 350, image: twinRoomImg },
-  { id: 'penthouse', name: 'Penthouse Suite', price: 800, image: penthouseImg },
+const defaultRooms = [
+  { id: 'solo', name: 'Solo Room', price: 150, image: soloRoomImg, available: true },
+  { id: 'deluxe', name: 'Deluxe Room', price: 280, image: deluxeRoomImg, available: true },
+  { id: 'twin', name: 'Twin Deluxe Room', price: 350, image: twinRoomImg, available: true },
+  { id: 'penthouse', name: 'Penthouse Suite', price: 800, image: penthouseImg, available: true },
 ];
 
 export default function Booking() {
@@ -27,6 +27,20 @@ export default function Booking() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [rooms, setRooms] = useState(defaultRooms);
+
+  useEffect(() => {
+    const storedRooms = localStorage.getItem('elysium_rooms');
+    if (storedRooms) {
+      const parsedRooms = JSON.parse(storedRooms);
+      // Merge stored data with default images
+      const mergedRooms = defaultRooms.map(defaultRoom => {
+        const stored = parsedRooms.find((r: any) => r.id === defaultRoom.id);
+        return stored ? { ...defaultRoom, price: stored.price, available: stored.available } : defaultRoom;
+      });
+      setRooms(mergedRooms);
+    }
+  }, []);
   
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -246,10 +260,12 @@ export default function Booking() {
                 {rooms.map((room) => (
                   <label
                     key={room.id}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                      formData.selectedRoom === room.id
-                        ? 'border-accent shadow-gold'
-                        : 'border-transparent hover:border-border'
+                    className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                      !room.available 
+                        ? 'opacity-50 cursor-not-allowed border-transparent' 
+                        : formData.selectedRoom === room.id
+                          ? 'border-accent shadow-gold cursor-pointer'
+                          : 'border-transparent hover:border-border cursor-pointer'
                     }`}
                   >
                     <input
@@ -258,16 +274,24 @@ export default function Booking() {
                       value={room.id}
                       checked={formData.selectedRoom === room.id}
                       onChange={handleChange}
+                      disabled={!room.available}
                       className="sr-only"
                     />
-                    <div className="aspect-[4/3]">
+                    <div className="aspect-[4/3] relative">
                       <img src={room.image} alt={room.name} className="w-full h-full object-cover" />
+                      {!room.available && (
+                        <div className="absolute inset-0 bg-foreground/60 flex items-center justify-center">
+                          <span className="px-3 py-1 bg-destructive text-destructive-foreground text-xs font-medium rounded">
+                            Unavailable
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="p-3 bg-background">
                       <p className="font-medium text-sm">{room.name}</p>
                       <p className="text-accent text-sm">${room.price}/night</p>
                     </div>
-                    {formData.selectedRoom === room.id && (
+                    {formData.selectedRoom === room.id && room.available && (
                       <div className="absolute top-2 right-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-accent-foreground" />
                       </div>

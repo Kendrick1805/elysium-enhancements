@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Calendar, FileText, Star, LogOut, Trash2, ArrowUpDown } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Star, LogOut, Trash2, Home, BedDouble, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
+import soloRoomImg from '@/assets/solo-room.png';
+import deluxeRoomImg from '@/assets/deluxe-room.png';
+import twinRoomImg from '@/assets/twin-room.png';
+import penthouseImg from '@/assets/penthouse.png';
 
 interface Review {
   id: string;
@@ -12,6 +16,21 @@ interface Review {
   createdAt: string;
 }
 
+interface Room {
+  id: string;
+  name: string;
+  price: number;
+  available: boolean;
+  image: string;
+}
+
+const defaultRooms: Room[] = [
+  { id: 'solo', name: 'Solo Room', price: 150, available: true, image: soloRoomImg },
+  { id: 'deluxe', name: 'Deluxe Room', price: 280, available: true, image: deluxeRoomImg },
+  { id: 'twin', name: 'Twin Deluxe Room', price: 350, available: true, image: twinRoomImg },
+  { id: 'penthouse', name: 'Penthouse Suite', price: 800, available: true, image: penthouseImg },
+];
+
 export default function Admin() {
   const { user, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -20,11 +39,16 @@ export default function Admin() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewSort, setReviewSort] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [editingRoom, setEditingRoom] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ price: 0, available: true });
 
   useEffect(() => {
     setBookings(JSON.parse(localStorage.getItem('elysium_bookings') || '[]'));
     setUsers(JSON.parse(localStorage.getItem('elysium_users') || '[]'));
     setReviews(JSON.parse(localStorage.getItem('elysium_reviews') || '[]'));
+    const storedRooms = localStorage.getItem('elysium_rooms');
+    setRooms(storedRooms ? JSON.parse(storedRooms) : defaultRooms);
   }, []);
 
   if (!isAdmin) return <Navigate to="/" replace />;
@@ -43,6 +67,7 @@ export default function Admin() {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'rooms', label: 'Rooms', icon: BedDouble },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'reviews', label: 'Reviews', icon: Star },
@@ -53,6 +78,25 @@ export default function Admin() {
     setReviews(updatedReviews);
     localStorage.setItem('elysium_reviews', JSON.stringify(updatedReviews));
     toast.success('Review deleted');
+  };
+
+  const handleEditRoom = (room: Room) => {
+    setEditingRoom(room.id);
+    setEditForm({ price: room.price, available: room.available });
+  };
+
+  const handleSaveRoom = (roomId: string) => {
+    const updatedRooms = rooms.map(r => 
+      r.id === roomId ? { ...r, price: editForm.price, available: editForm.available } : r
+    );
+    setRooms(updatedRooms);
+    localStorage.setItem('elysium_rooms', JSON.stringify(updatedRooms));
+    setEditingRoom(null);
+    toast.success('Room updated successfully');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRoom(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -88,13 +132,22 @@ export default function Admin() {
             </button>
           ))}
         </nav>
-        <button
-          onClick={logout}
-          className="mt-8 w-full flex items-center gap-3 px-4 py-3 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          Logout
-        </button>
+        <div className="mt-8 space-y-2">
+          <Link
+            to="/"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-sidebar-accent/50 rounded-lg transition-colors"
+          >
+            <Home className="w-5 h-5" />
+            Back to Home
+          </Link>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Mobile Tab Bar */}
@@ -117,9 +170,18 @@ export default function Admin() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 pb-24 lg:pb-8">
-        <div className="mb-8">
-          <h2 className="font-display text-2xl md:text-3xl mb-2">Welcome, {user?.fullName}</h2>
-          <p className="text-muted-foreground">Manage your hotel operations</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h2 className="font-display text-2xl md:text-3xl mb-2">Welcome, {user?.fullName}</h2>
+            <p className="text-muted-foreground">Manage your hotel operations</p>
+          </div>
+          <Link
+            to="/"
+            className="lg:hidden inline-flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg hover:bg-secondary transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            Back to Home
+          </Link>
         </div>
 
         {activeTab === 'dashboard' && (
@@ -137,6 +199,94 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {activeTab === 'rooms' && (
+          <div className="space-y-6">
+            <div className="bg-card rounded-xl shadow-sm p-4 md:p-6">
+              <h3 className="font-display text-xl mb-2">Room Management</h3>
+              <p className="text-muted-foreground text-sm">Edit room prices and availability</p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+              {rooms.map(room => (
+                <div key={room.id} className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  <div className="aspect-[16/9] overflow-hidden">
+                    <img src={room.image} alt={room.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-4 md:p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-display text-lg">{room.name}</h4>
+                        <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                          room.available 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {room.available ? 'Available' : 'Unavailable'}
+                        </span>
+                      </div>
+                      <p className="font-display text-xl text-accent">${room.price}<span className="text-sm text-muted-foreground font-body">/night</span></p>
+                    </div>
+
+                    {editingRoom === room.id ? (
+                      <div className="space-y-4 pt-4 border-t border-border">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Price per night ($)</label>
+                          <input
+                            type="number"
+                            value={editForm.price}
+                            onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-accent"
+                            min="0"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="text-sm font-medium">Availability:</label>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm({ ...editForm, available: !editForm.available })}
+                            className={`relative w-12 h-6 rounded-full transition-colors ${
+                              editForm.available ? 'bg-green-500' : 'bg-muted'
+                            }`}
+                          >
+                            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                              editForm.available ? 'left-7' : 'left-1'
+                            }`} />
+                          </button>
+                          <span className="text-sm text-muted-foreground">
+                            {editForm.available ? 'Available' : 'Unavailable'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveRoom(room.id)}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            <Save className="w-4 h-4" />
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleEditRoom(room)}
+                        className="w-full mt-4 px-4 py-2 border border-border rounded-lg hover:bg-secondary transition-colors text-sm font-medium"
+                      >
+                        Edit Room
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -242,7 +392,6 @@ export default function Admin() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="font-display text-xl">All User Reviews</h3>
                   <div className="flex flex-wrap gap-2">
-                    {/* Rating Filter */}
                     <select
                       value={ratingFilter ?? ''}
                       onChange={(e) => setRatingFilter(e.target.value ? Number(e.target.value) : null)}
@@ -255,7 +404,6 @@ export default function Admin() {
                       <option value="2">2 Stars</option>
                       <option value="1">1 Star</option>
                     </select>
-                    {/* Sort */}
                     <select
                       value={reviewSort}
                       onChange={(e) => setReviewSort(e.target.value as typeof reviewSort)}
