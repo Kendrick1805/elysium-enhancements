@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Calendar, FileText, Star, LogOut, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Star, LogOut, Trash2, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Review {
@@ -18,6 +18,8 @@ export default function Admin() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewSort, setReviewSort] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
 
   useEffect(() => {
     setBookings(JSON.parse(localStorage.getItem('elysium_bookings') || '[]'));
@@ -237,13 +239,64 @@ export default function Admin() {
 
             <div className="bg-card rounded-xl shadow-sm overflow-hidden">
               <div className="p-4 md:p-6 border-b border-border">
-                <h3 className="font-display text-xl">All User Reviews</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="font-display text-xl">All User Reviews</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Rating Filter */}
+                    <select
+                      value={ratingFilter ?? ''}
+                      onChange={(e) => setRatingFilter(e.target.value ? Number(e.target.value) : null)}
+                      className="px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-2 focus:ring-accent"
+                    >
+                      <option value="">All Ratings</option>
+                      <option value="5">5 Stars</option>
+                      <option value="4">4 Stars</option>
+                      <option value="3">3 Stars</option>
+                      <option value="2">2 Stars</option>
+                      <option value="1">1 Star</option>
+                    </select>
+                    {/* Sort */}
+                    <select
+                      value={reviewSort}
+                      onChange={(e) => setReviewSort(e.target.value as typeof reviewSort)}
+                      className="px-3 py-2 text-sm border border-input rounded-lg bg-background focus:ring-2 focus:ring-accent"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="highest">Highest Rating</option>
+                      <option value="lowest">Lowest Rating</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <div className="divide-y divide-border">
-                {reviews.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">No user reviews yet</div>
-                ) : (
-                  reviews.map(review => (
+                {(() => {
+                  let filteredReviews = ratingFilter 
+                    ? reviews.filter(r => r.rating === ratingFilter)
+                    : reviews;
+                  
+                  const sortedReviews = [...filteredReviews].sort((a, b) => {
+                    switch (reviewSort) {
+                      case 'newest':
+                        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                      case 'oldest':
+                        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                      case 'highest':
+                        return b.rating - a.rating;
+                      case 'lowest':
+                        return a.rating - b.rating;
+                      default:
+                        return 0;
+                    }
+                  });
+
+                  if (sortedReviews.length === 0) {
+                    return <div className="p-8 text-center text-muted-foreground">
+                      {ratingFilter ? `No ${ratingFilter}-star reviews` : 'No user reviews yet'}
+                    </div>;
+                  }
+
+                  return sortedReviews.map(review => (
                     <div key={review.id} className="p-4 md:p-6 hover:bg-secondary/50">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1">
@@ -267,8 +320,8 @@ export default function Admin() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
             </div>
           </div>
