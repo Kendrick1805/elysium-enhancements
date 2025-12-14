@@ -1,9 +1,9 @@
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import infinityImg from '@/assets/infinity.png';
-import gymImg from '@/assets/gym.png';
-import diningImg from '@/assets/dining.png';
-import entertainmentImg from '@/assets/entertainment.png';
+import infinityImg from '@/assets/infinity-pool.png';
+import gymImg from '@/assets/fitness-center.png';
+import diningImg from '@/assets/gourmet-dining.png';
+import entertainmentImg from '@/assets/evening-entertainment.png';
 
 const amenities = [
   {

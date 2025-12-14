@@ -312,11 +312,19 @@ export default function Booking() {
                   </div>
                 </div>
               </div>
-              {nights > 0 && selectedRoomData && (
+              {selectedRoomData && (
                 <div className="mt-4 p-4 bg-accent/10 rounded-lg">
-                  <p className="text-sm">
-                    {nights} night{nights > 1 ? 's' : ''} × ${selectedRoomData.price} = <span className="font-display text-lg text-accent">${total}</span>
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="text-sm space-y-1">
+                      <p><span className="text-muted-foreground">Room:</span> {selectedRoomData.name}</p>
+                      <p><span className="text-muted-foreground">Rate:</span> ${selectedRoomData.price}/night</p>
+                      {nights > 0 && <p><span className="text-muted-foreground">Duration:</span> {nights} night{nights > 1 ? 's' : ''}</p>}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Total</p>
+                      <p className="font-display text-2xl text-accent">${nights > 0 ? total : selectedRoomData.price}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
